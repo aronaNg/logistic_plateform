@@ -1,0 +1,22 @@
+La première étape est la réception et le déchargement des marchandises qui arrivent des fournisseurs ou
+d’entrepôts amonts. Cette opération se passe au niveau des quais de déchargement. Ces produits sont ensuite
+acheminés dans un espace de stockage approprié en attente de livraison, grâce à des appareils de manutention,
+et stockés dans des étagères à plusieurs niveaux via des outils de levage comme des chariots élévateurs. Pour
+finir, lorsque l’expédition est déclenchée, les produits concernés sont déstockés, acheminés vers les quais
+d’expédition, chargés dans le transporteur et ensuite livrés au client final.
+
+Modélisation de la plateforme avec les éléments suivants : quais de déchargement, entrepôts de stockage,
+expédition, convoyeurs, systèmes de manutention, véhicules de transport, nombre de références produits
+à gérer, capacité de stockage de la plateforme, capacité de traitement des systèmes de manutention,
+localisation géographique des clients permettant de calculer les distances entre les différentes localisation
+(plateforme/clients). 
+
+Simulation du fonctionnement de la plateforme en précisant des paramètres de simulation : horizon
+de simulation, fréquences d’arrivage des produits, demandes des clients, disponibilité des ressources
+de transport. . . La simulation devra pouvoir afficher des indicateurs de performance en cours et à
+la fin de simulation du type : nombre de produits reçus, nombre de produits en stock, nombre de
+produits livrés, temps moyen de séjour en stock, temps total du produit passé dans le système entre sa
+réception et sa livraison, empreinte carbone de la livraison calculé à partir de la distance parcourue par
+les transporteurs. . 
+
+Tu ne prends pas en  compte les classes QuaiDechargement,Convoyeur,VehiculeTransport. Fournisseurs → Quais de déchargement → Manutention → Stockage → Déstockage → Quais d'expédition → Livraison clients. Je te donne d'abord le paragraphe d'explication
