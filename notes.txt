@@ -1,0 +1,32 @@
+Zone de réception :
+
+Quais de déchargement
+Réception des marchandises des fournisseurs
+
+
+Zone de stockage :
+
+Étagères multi-niveaux
+Systèmes de manutention (chariots élévateurs)
+Stockage temporaire des produits
+
+
+Zone d'expédition :
+
+Quais d'expédition
+Chargement des transporteurs
+Préparation pour livraison aux clients
+
+
+
+Le flux suit donc le parcours :
+Fournisseurs → Quais de déchargement → Manutention → Stockage → Déstockage → Quais d'expédition → Livraison clients
+
+QuaiDechargement
+Entrepot
+Convoyeur
+VehiculeTransport
+Produit
+Client
+PlateformeLogistique (classe centrale pour coordonner l'ensemble)
+
