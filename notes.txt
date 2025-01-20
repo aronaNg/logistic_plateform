@@ -30,3 +30,50 @@ Produit
 Client
 PlateformeLogistique (classe centrale pour coordonner l'ensemble)
 
+Classes de Base:
+
+Produit : Représente un article avec un ID, nom, poids et temps de réception
+Entrepot : Gère le stockage des produits avec une capacité maximale
+QuaiDechargement : Simule les quais de déchargement des marchandises
+Convoyeur : Système de transport interne des produits
+VehiculeTransport : Gère les véhicules pour la livraison
+Client : Stocke les informations des clients avec leurs coordonnées géographiques
+
+
+Classe Principale - PlateformeLogistique:
+C'est le cœur du système qui :
+
+Gère l'ensemble des opérations
+Coordonne les différentes composantes (entrepôt, quais, convoyeurs, véhicules)
+Suit les indicateurs de performance
+Simule les opérations dans le temps
+
+
+Fonctionnalités Principales:
+
+Réception des produits
+Stockage en entrepôt
+Expédition vers les clients
+Calcul des distances et de l'empreinte carbone
+Suivi des statistiques (produits reçus/expédiés, temps en stock)
+
+
+Simulation:
+Dans le main(), le programme :
+
+Initialise une plateforme avec une capacité de 100 produits
+Configure une simulation sur 100 unités de temps
+Définit des fréquences d'arrivage (10) et d'expédition (15)
+Enregistre des clients, quais, convoyeurs et véhicules
+Lance la simulation
+
+
+
+Le programme implémente une gestion logistique complète avec :
+
+Gestion des stocks
+Traçabilité des produits
+Optimisation des ressources
+Suivi environnemental (empreinte carbone)
+Indicateurs de performance
+
