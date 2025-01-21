@@ -77,3 +77,5 @@ Optimisation des ressources
 Suivi environnemental (empreinte carbone)
 Indicateurs de performance
 
+Amélioration : Il pourrait être intéressant d’introduire un système FIFO (First-In, First-Out) pour mieux simuler la gestion des stocks. Utiliser std::queue ou std::deque au lieu d’un std::vector pourrait être une option.
+

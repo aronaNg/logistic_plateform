@@ -7,6 +7,7 @@
 #include <map>
 #include <numeric>
 #include <algorithm>
+#include <queue>  // Ajout de la bibliothèque queue
 
 // Classe Produit
 class Produit {
@@ -20,17 +21,24 @@ public:
         : id(id), nom(nom), poids(poids), tempsReception(tempsReception) {}
 };
 
+
 // Classe Entrepot
 class Entrepot {
 public:
     int capaciteMax;
-    std::vector<Produit> stock;
+    std::queue<Produit> stock;  // Utilisation d'une queue pour le FIFO
 
     Entrepot(int capacite) : capaciteMax(capacite) {}
+    bool estVide() const {
+        return stock.empty();
+    }
 
+    int tailleStock() const {
+        return stock.size();
+    }
     bool ajouterProduit(const Produit& produit) {
         if (stock.size() < capaciteMax) {
-            stock.push_back(produit);
+            stock.push(produit);  // Ajout FIFO
             return true;
         }
         std::cout << "Entrepôt plein, impossible d'ajouter le produit." << std::endl;
@@ -39,8 +47,8 @@ public:
 
     Produit retirerProduit() {
         if (!stock.empty()) {
-            Produit produit = stock.back();
-            stock.pop_back();
+            Produit produit = stock.front();  // On prend le premier produit (FIFO)
+            stock.pop();  // On le retire de la queue
             return produit;
         }
         return Produit(-1, "Aucun produit", 0, 0);
@@ -50,6 +58,7 @@ public:
         std::cout << "Produits en stock : " << stock.size() << "/" << capaciteMax << std::endl;
     }
 };
+
 
 // Classe QuaiDechargement
 class QuaiDechargement {
@@ -266,53 +275,53 @@ public:
     }
 
     void declencherExpeditionPourClient(int clientId, int quantite) {
-    auto clientIt = std::find_if(clients.begin(), clients.end(),
-        [clientId](const Client& c) { return c.id == clientId; });
-    
-    if (clientIt != clients.end() && !entrepot.stock.empty()) {
-        // Chercher un transporteur disponible
-        auto transporteurIt = std::find_if(vehicules.begin(), vehicules.end(),
-            [](const VehiculeTransport& v) { return v.estDisponible; });
-        
-        if (transporteurIt != vehicules.end()) {
-            // Mettre à jour la disponibilité du transporteur
-            transporteurIt->estDisponible = false;
-            disponibiliteTransporteurs[transporteurIt->id] = false;
-            
-            int produitsLivres = 0;
-            while (produitsLivres < quantite && !entrepot.stock.empty() && 
-                   produitsLivres < transporteurIt->capaciteMax) {
-                Produit produitExpedie = entrepot.retirerProduit();
-                produitsExpedies++;
-                double tempsTotal = tempsSimule - produitExpedie.tempsReception;
-                totalTempsEnStock += tempsTotal;
-                tempsSystemeProduits.push_back(tempsTotal);
+        auto clientIt = std::find_if(clients.begin(), clients.end(),
+            [clientId](const Client& c) { return c.id == clientId; });
 
-                transporteurIt->chargerProduit(produitExpedie);
-                produitsLivres++;
+        if (clientIt != clients.end() && !entrepot.estVide()) {
+            // Chercher un transporteur disponible
+            auto transporteurIt = std::find_if(vehicules.begin(), vehicules.end(),
+                [](const VehiculeTransport& v) { return v.estDisponible; });
+
+            if (transporteurIt != vehicules.end()) {
+                // Marquer le transporteur comme occupé
+                transporteurIt->estDisponible = false;
+                disponibiliteTransporteurs[transporteurIt->id] = false;
+
+                int produitsLivres = 0;
+                while (produitsLivres < quantite && !entrepot.estVide() && 
+                    produitsLivres < transporteurIt->capaciteMax) {
+                    Produit produitExpedie = entrepot.retirerProduit();  // FIFO : on retire le premier produit
+                    produitsExpedies++;
+                    double tempsTotal = tempsSimule - produitExpedie.tempsReception;
+                    totalTempsEnStock += tempsTotal;
+                    tempsSystemeProduits.push_back(tempsTotal);
+
+                    transporteurIt->chargerProduit(produitExpedie);
+                    produitsLivres++;
+                }
+
+                // Calcul de la distance et empreinte carbone
+                double distance = calculerDistance(0, 0, clientIt->positionX, clientIt->positionY);
+                empreinteCarbone += calculerEmpreinteCarbone(distance);
+
+                // Simuler la livraison
+                transporteurIt->demarrerLivraison(clientIt->nom);
+                std::cout << produitsLivres << " produits expédiés au client " 
+                        << clientIt->nom << " par le véhicule " << transporteurIt->id << ".\n";
+
+                // Simulation de fin de livraison
+                int tempsLivraison = static_cast<int>(distance / transporteurIt->vitesseMoyenne);
+                transporteurIt->dechargerProduits();
+                transporteurIt->terminerLivraison();
+                transporteurIt->estDisponible = true;
+                disponibiliteTransporteurs[transporteurIt->id] = true;
+            } else {
+                std::cout << "Aucun transporteur disponible pour la livraison.\n";
             }
-
-            // Calculer la distance et l'empreinte carbone
-            double distance = calculerDistance(0, 0, clientIt->positionX, clientIt->positionY);
-            empreinteCarbone += calculerEmpreinteCarbone(distance);
-
-            // Simuler la livraison
-            transporteurIt->demarrerLivraison(clientIt->nom);
-            std::cout << produitsLivres << " produits expédiés au client " 
-                      << clientIt->nom << " par le véhicule " << transporteurIt->id << ".\n";
-
-            // Programmer la fin de la livraison
-            int tempsLivraison = static_cast<int>(distance / transporteurIt->vitesseMoyenne);
-            // Dans un vrai système, il faudrait gérer cela de manière asynchrone
-            transporteurIt->dechargerProduits();
-            transporteurIt->terminerLivraison();
-            transporteurIt->estDisponible = true;
-            disponibiliteTransporteurs[transporteurIt->id] = true;
-        } else {
-            std::cout << "Aucun transporteur disponible pour la livraison.\n";
         }
     }
-}
+
 
     void afficherIndicateursFinals() {
         afficherIndicateurs();
@@ -332,7 +341,7 @@ public:
         for (tempsSimule = 0; tempsSimule < horizonSimulation; ++tempsSimule) {
             // Simuler l'arrivage de produits
             if (tempsSimule % frequenceArrivage == 0) {
-                receptionnerProduits(Produit(produitsRecus + 3, "Produit X", 2.5, tempsSimule));
+                receptionnerProduits(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
             }
 
             // Traiter les demandes clients
