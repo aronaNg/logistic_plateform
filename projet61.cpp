@@ -33,22 +33,35 @@ private:
         std::cout << "Configuration enregistrée.\n";
     }
 
+    int lireEntier(const std::string& message) {
+        int valeur;
+        while (true) {
+            std::cout << message;
+            if (std::cin >> valeur) break;
+            std::cout << "Entrée invalide. Veuillez entrer un nombre entier.\n";
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        return valeur;
+    }
+
+
     void ajouterClients() {
-        int id, x, y;
-        std::string nom;
         char continuer;
-
         do {
-            std::cout << "ID Client : ";
-            std::cin >> id;
+            int id = lireEntier("ID Client : ");
             std::cout << "Nom Client : ";
+            std::string nom;
             std::cin >> nom;
-            std::cout << "Position X : ";
-            std::cin >> x;
-            std::cout << "Position Y : ";
-            std::cin >> y;
+            int x = lireEntier("Position X : ");
+            int y = lireEntier("Position Y : ");
 
-            plateforme.enregistrerClient(id, nom, x, y);
+            if (x >= 0 && y >= 0) {
+                plateforme.enregistrerClient(id, nom, x, y);
+                std::cout << "Client ajouté avec succès.\n";
+            } else {
+                std::cout << "Position invalide. Les coordonnées doivent être positives.\n";
+            }
 
             std::cout << "Ajouter un autre client ? (o/n) : ";
             std::cin >> continuer;
@@ -137,7 +150,6 @@ public:
                 default: std::cout << "Choix invalide.\n";
             }
 
-            // Clear input buffer
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -148,6 +160,19 @@ public:
 int main() {
     srand(time(0));
     PlateformeLogistique plateforme(100, 100, 10, 15);
+
+    plateforme.enregistrerClient(1, "NGOM", 10.0, 15.0);
+    plateforme.enregistrerClient(2, "HOFFMANN", 20.0, 5.0);
+    plateforme.enregistrerClient(3, "Testeur", 15.0, 25.0);
+    
+    plateforme.ajouterDemande(1, 1, 30);
+    plateforme.ajouterDemande(2, 23, 70);
+
+    plateforme.enregistrerQuai(QuaiDechargement(1, 5));
+    plateforme.enregistrerConvoyeur(Convoyeur(10));
+    plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));
+    plateforme.enregistrerVehicule(VehiculeTransport(2, 30, 90.0));
+
     SimulationInterface interface(plateforme);
     interface.executerInterface();
     return 0;

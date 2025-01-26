@@ -251,15 +251,6 @@ public:
         entrepot.afficherStock();
     }
 
-
-    void declencherExpedition() {
-        if (!entrepot.stock.empty()) {
-            // Choix aléatoire d'un client pour la livraison
-            int indexClient = rand() % clients.size();
-            declencherExpeditionPourClient(clients[indexClient].id, 1);
-        }
-    }
-
     double calculerEmpreinteCarbone(double distance) {
         const double emissionParKm = 0.25;  // Exemple : 0.25 kg CO2 par km
         return distance * emissionParKm;
@@ -274,8 +265,20 @@ public:
                 << std::setw(30) << "Empreinte carbone totale : " << empreinteCarbone << " kg CO2\n";
     }
 
+    bool verifierClientExiste(int clientId) {
+        for (const auto& client : clients) {
+            if (client.id == clientId) {
+                return true;
+            }
+        }
+        log("WARNING", "Client ID " + std::to_string(clientId) + " introuvable.", tempsSimule);
+        return false;
+    }
+
     void ajouterDemande(int clientId, int quantite, int delai) {
-        demandesEnCours.push_back({clientId, quantite, delai});
+        if (verifierClientExiste(clientId)) {
+            demandesEnCours.push_back({clientId, quantite, delai});
+        }
     }
 
     void mettreAJourDisponibiliteTransporteur(int id, bool disponible) {
@@ -304,77 +307,60 @@ public:
         std::cout << "Taux d'occupation des transporteurs : " 
                   << calculerTauxOccupationTransporteurs() << "%\n";
     }
+void traiterDemandesClients() {
+    log("INFO", "Traitement des demandes client en cours...", tempsSimule);
 
-    void traiterDemandesClients() {
-        auto it = demandesEnCours.begin();
-        while (it != demandesEnCours.end()) {
-            if (it->delaiSouhaite >= tempsSimule && trouverTransporteurDisponible()) {
-                declencherExpeditionPourClient(it->clientId, it->quantite);
-                it = demandesEnCours.erase(it);
+    for (auto& demande : demandesEnCours) {
+        // Trouver un véhicule disponible
+        auto itVehicule = std::find_if(vehicules.begin(), vehicules.end(),
+                                       [](const VehiculeTransport& vehicule) { return vehicule.estDisponible; });
+
+        if (itVehicule != vehicules.end()) {
+            VehiculeTransport& vehicule = *itVehicule;
+
+            // Trouver le client correspondant à la demande
+            auto itClient = std::find_if(clients.begin(), clients.end(),
+                                         [&demande](const Client& client) { return client.id == demande.clientId; });
+
+            if (itClient != clients.end()) {
+                Client& client = *itClient;
+
+                // Charger les produits pour satisfaire la demande
+                int produitsCharges = 0;
+                while (produitsCharges < demande.quantite && !entrepot.estVide() && vehicule.chargement.size() < vehicule.capaciteMax) {
+                    Produit produit = entrepot.retirerProduit();
+                    vehicule.chargerProduit(produit);
+                    produitsCharges++;
+                }
+
+                if (produitsCharges > 0) {
+                    log("INFO", "Véhicule " + std::to_string(vehicule.id) + " chargé avec " + std::to_string(produitsCharges) +
+                                " produits pour le client " + client.nom, tempsSimule);
+
+                    // Calcul de la distance et empreinte carbone
+                    double distance = calculerDistance(0, 0, client.positionX, client.positionY); // Remplacez (0, 0) par la position de l'entrepôt
+                    double empreinte = calculerEmpreinteCarbone(distance);
+                    empreinteCarbone += empreinte;
+
+                    vehicule.demarrerLivraison(client.nom);
+                    vehicule.terminerLivraison();
+
+                    produitsExpedies += produitsCharges;
+                } else {
+                    log("WARNING", "Pas assez de produits pour satisfaire la demande du client " + client.nom, tempsSimule);
+                }
             } else {
-                ++it;
+                log("ERROR", "Client avec ID " + std::to_string(demande.clientId) + " introuvable.", tempsSimule);
             }
+        } else {
+            log("WARNING", "Aucun véhicule disponible pour traiter les demandes en ce moment.", tempsSimule);
+            break;
         }
     }
 
-    void declencherExpeditionPourClient(int clientId, int quantite) {
-        auto clientIt = std::find_if(clients.begin(), clients.end(),
-            [clientId](const Client& c) { return c.id == clientId; });
+    entrepot.afficherStock();
+}
 
-        if (clientIt != clients.end() && !entrepot.estVide()) {
-            // Chercher des transporteurs disponibles
-            VehiculeTransport* transporteurChoisi = nullptr;
-
-            std::vector<VehiculeTransport*> transporteursDisponibles;
-            for (auto& transporteur : vehicules) {
-                if (transporteur.estDisponible) {
-                    transporteursDisponibles.push_back(&transporteur);
-                }
-            }
-
-            if (!transporteursDisponibles.empty()) {
-                int indexAleatoire = rand() % transporteursDisponibles.size();
-                transporteurChoisi = transporteursDisponibles[indexAleatoire];
-            }
-
-
-            if (transporteurChoisi) {
-                // Marquer le transporteur comme occupé
-                transporteurChoisi->estDisponible = false;
-                disponibiliteTransporteurs[transporteurChoisi->id] = false;
-                log("DEBUG", "Transporteur " + std::to_string(transporteurChoisi->id) + " sélectionné.", tempsSimule);
-                int produitsLivres = 0;
-                while (produitsLivres < quantite && !entrepot.estVide() && 
-                    produitsLivres < transporteurChoisi->capaciteMax) {
-                    Produit produitExpedie = entrepot.retirerProduit();
-                    produitsExpedies++;
-                    double tempsTotal = tempsSimule - produitExpedie.tempsReception;
-                    totalTempsEnStock += tempsTotal;
-                    tempsSystemeProduits.push_back(tempsTotal);
-
-                    transporteurChoisi->chargerProduit(produitExpedie);
-                    produitsLivres++;
-                }
-
-                // Calcul de la distance et empreinte carbone
-                double distance = calculerDistance(0, 0, clientIt->positionX, clientIt->positionY);
-                empreinteCarbone += calculerEmpreinteCarbone(distance);
-
-                // Simuler la livraison
-                transporteurChoisi->demarrerLivraison(clientIt->nom);
-                log("INFO", std::to_string(produitsLivres) + " produits expédiés au " + clientIt->nom + ".");
-
-                // Simulation de fin de livraison
-                int tempsLivraison = static_cast<int>(distance / transporteurChoisi->vitesseMoyenne);
-                transporteurChoisi->dechargerProduits();
-                transporteurChoisi->terminerLivraison();
-                transporteurChoisi->estDisponible = true;
-                disponibiliteTransporteurs[transporteurChoisi->id] = true;
-            } else {
-                std::cout << "Aucun transporteur disponible pour la livraison.\n";
-            }
-        }
-    }
 
 
     void afficherIndicateursFinals() {
@@ -406,11 +392,6 @@ public:
             // Traiter les demandes clients
             traiterDemandesClients();
 
-            // Simuler une expédition de produits
-            if (tempsSimule % frequenceExpedition == 0 && !entrepot.stock.empty()) {
-                declencherExpedition();
-            }
-
             // Afficher les indicateurs tous les 10 pas de temps
             if (tempsSimule % 10 == 0) {
                 afficherIndicateursEnCours();
@@ -424,7 +405,7 @@ public:
 // int main() {
 //     srand(time(0));  // Initialisation pour les nombres aléatoires
 
-//     PlateformeLogistique plateforme(100, 100, 10, 15);  // Capacité de l'entrepôt, horizon de simulation, fréquences d'arrivage et d'expédition
+//     PlateformeLogistique plateforme(100, 100, 10, 15); 
 
 //     plateforme.enregistrerClient(1, "Client A", 10.0, 15.0);
 //     plateforme.enregistrerClient(2, "Client B", 20.0, 5.0);
