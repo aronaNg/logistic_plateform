@@ -394,6 +394,7 @@ public:
     void simulerOperation() {
         for (tempsSimule = 0; tempsSimule < horizonSimulation; ++tempsSimule) {
             // Simuler l'arrivage de produits
+
             if (tempsSimule % frequenceArrivage == 0) {
                 int nombreProduits = 1 + rand() % 5;  // Entre 1 et 5 produits
                 std::vector<Produit> produitsArrives;
@@ -420,27 +421,27 @@ public:
     }
 };
 
-int main() {
-    srand(time(0));  // Initialisation pour les nombres aléatoires
+// int main() {
+//     srand(time(0));  // Initialisation pour les nombres aléatoires
 
-    PlateformeLogistique plateforme(100, 100, 10, 15);  // Capacité de l'entrepôt, horizon de simulation, fréquences d'arrivage et d'expédition
+//     PlateformeLogistique plateforme(100, 100, 10, 15);  // Capacité de l'entrepôt, horizon de simulation, fréquences d'arrivage et d'expédition
 
-    plateforme.enregistrerClient(1, "Client A", 10.0, 15.0);
-    plateforme.enregistrerClient(2, "Client B", 20.0, 5.0);
-    plateforme.enregistrerClient(3, "Client C", 15.0, 25.0);
+//     plateforme.enregistrerClient(1, "Client A", 10.0, 15.0);
+//     plateforme.enregistrerClient(2, "Client B", 20.0, 5.0);
+//     plateforme.enregistrerClient(3, "Client C", 15.0, 25.0);
     
-    plateforme.ajouterDemande(1, 5, 30);  // Client A veut 5 produits avant t=30
-    plateforme.ajouterDemande(2, 3, 50);  // Client B veut 3 produits avant t=50
-    plateforme.ajouterDemande(3, 4, 70);  // Client C veut 4 produits avant t=70
+//     plateforme.ajouterDemande(1, 5, 30);  // Client A veut 5 produits avant t=30
+//     plateforme.ajouterDemande(2, 3, 50);  // Client B veut 3 produits avant t=50
+//     plateforme.ajouterDemande(3, 4, 70);  // Client C veut 4 produits avant t=70
 
-    // Enregistrement des quais, convoyeurs et véhicules de transport
-    plateforme.enregistrerQuai(QuaiDechargement(1, 5));
-    plateforme.enregistrerConvoyeur(Convoyeur(10));
-    plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));
-    plateforme.enregistrerVehicule(VehiculeTransport(2, 30, 90.0));
+//     // Enregistrement des quais, convoyeurs et véhicules de transport
+//     plateforme.enregistrerQuai(QuaiDechargement(1, 5));
+//     plateforme.enregistrerConvoyeur(Convoyeur(10));
+//     plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));
+//     plateforme.enregistrerVehicule(VehiculeTransport(2, 30, 90.0));
 
-    // Simulation du fonctionnement de la plateforme
-    plateforme.simulerOperation();
+//     // Simulation du fonctionnement de la plateforme
+//     plateforme.simulerOperation();
 
-    return 0;
-}
+//     return 0;
+// }
