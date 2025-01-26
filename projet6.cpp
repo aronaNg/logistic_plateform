@@ -8,6 +8,8 @@
 #include <numeric>
 #include <algorithm>
 #include <queue>  // Ajout de la bibliothèque queue
+#include <iostream>
+#include <iomanip>
 
 // Classe Produit
 class Produit {
@@ -202,6 +204,23 @@ public:
     void enregistrerClient(int id, const std::string& nom, double x, double y) {
         clients.emplace_back(id, nom, x, y);
     }
+    void log(const std::string& level, const std::string& message, int temps = -1) {
+    // Format du temps
+    std::string tempsStr = (temps >= 0) ? "[t=" + std::to_string(temps) + "] " : "";
+
+    // Affichage selon niveau
+    if (level == "INFO") {
+        std::cout << "\033[1;32m[INFO] " << tempsStr << message << "\033[0m\n";  // Vert
+    } else if (level == "DEBUG") {
+        std::cout << "\033[1;34m[DEBUG] " << tempsStr << message << "\033[0m\n";  // Bleu
+    } else if (level == "WARNING") {
+        std::cout << "\033[1;33m[WARNING] " << tempsStr << message << "\033[0m\n";  // Jaune
+    } else if (level == "ERROR") {
+        std::cout << "\033[1;31m[ERROR] " << tempsStr << message << "\033[0m\n";  // Rouge
+    } else {
+        std::cout << tempsStr << message << "\n";  // Par défaut
+    }
+}
 
     void enregistrerQuai(QuaiDechargement quai) {
         quais.push_back(quai);
@@ -216,13 +235,22 @@ public:
         disponibiliteTransporteurs[vehicule.id] = true;
     }
 
-    void receptionnerProduits(const Produit& produit) {
-        if (entrepot.ajouterProduit(produit)) {
-            produitsRecus++;
-            std::cout << "Produit " << produit.nom << " reçu.\n";
+    void receptionnerProduits(const std::vector<Produit>& produits) {
+        int produitsAjoutes = 0;
+        for (const auto& produit : produits) {
+            if (entrepot.ajouterProduit(produit)) {
+                produitsRecus++;
+                produitsAjoutes++;
+            } else {
+                log("WARNING", "Entrepôt plein. Produit " + produit.nom + " non ajouté.", tempsSimule);
+            }
+        }
+        if (produitsAjoutes > 0) {
+            log("INFO", std::to_string(produitsAjoutes) + " produits reçus dans l'entrepôt.", tempsSimule);
         }
         entrepot.afficherStock();
     }
+
 
     void declencherExpedition() {
         if (!entrepot.stock.empty()) {
@@ -238,13 +266,12 @@ public:
     }
 
     void afficherIndicateurs() {
-        std::cout << "\n--- Indicateurs de Performance ---\n";
-        std::cout << "Produits reçus : " << produitsRecus << "\n";
-        std::cout << "Produits expédiés : " << produitsExpedies << "\n";
-        std::cout << "Produits en stock : " << entrepot.stock.size() << "\n";
-        std::cout << "Temps moyen de séjour en stock : "
-                  << (produitsExpedies > 0 ? totalTempsEnStock / produitsExpedies : 0) << " unités de temps\n";
-        std::cout << "Empreinte carbone totale : " << empreinteCarbone << " kg CO2\n";
+        log("INFO", "--- Indicateurs de Performance ---");
+        std::cout << std::setw(30) << "Produits reçus : " << produitsRecus << "\n"
+                << std::setw(30) << "Produits expédiés : " << produitsExpedies << "\n"
+                << std::setw(30) << "Temps moyen de séjour : "
+                << (produitsExpedies > 0 ? totalTempsEnStock / produitsExpedies : 0) << " unités\n"
+                << std::setw(30) << "Empreinte carbone totale : " << empreinteCarbone << " kg CO2\n";
     }
 
     void ajouterDemande(int clientId, int quantite, int delai) {
@@ -315,7 +342,7 @@ public:
                 // Marquer le transporteur comme occupé
                 transporteurChoisi->estDisponible = false;
                 disponibiliteTransporteurs[transporteurChoisi->id] = false;
-
+                log("DEBUG", "Transporteur " + std::to_string(transporteurChoisi->id) + " sélectionné.", tempsSimule);
                 int produitsLivres = 0;
                 while (produitsLivres < quantite && !entrepot.estVide() && 
                     produitsLivres < transporteurChoisi->capaciteMax) {
@@ -335,8 +362,7 @@ public:
 
                 // Simuler la livraison
                 transporteurChoisi->demarrerLivraison(clientIt->nom);
-                std::cout << produitsLivres << " produits expédiés au client " 
-                        << clientIt->nom << " par le véhicule " << transporteurChoisi->id << ".\n";
+                log("INFO", std::to_string(produitsLivres) + " produits expédiés au " + clientIt->nom + ".");
 
                 // Simulation de fin de livraison
                 int tempsLivraison = static_cast<int>(distance / transporteurChoisi->vitesseMoyenne);
@@ -370,12 +396,12 @@ public:
             // Simuler l'arrivage de produits
             if (tempsSimule % frequenceArrivage == 0) {
                 int nombreProduits = 1 + rand() % 5;  // Entre 1 et 5 produits
+                std::vector<Produit> produitsArrives;
                 for (int i = 0; i < nombreProduits; ++i) {
-                    receptionnerProduits(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
+                    produitsArrives.push_back(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
                 }
+                receptionnerProduits(produitsArrives);
             }
-
-
             // Traiter les demandes clients
             traiterDemandesClients();
 
