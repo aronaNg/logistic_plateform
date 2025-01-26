@@ -28,7 +28,11 @@ public:
     int capaciteMax;
     std::queue<Produit> stock;  // Utilisation d'une queue pour le FIFO
 
-    Entrepot(int capacite) : capaciteMax(capacite) {}
+    Entrepot(int capacite) : capaciteMax(capacite) {
+        if (capacite <= 0) {
+            throw std::invalid_argument("La capacité doit être positive.");
+        }
+    }
     bool estVide() const {
         return stock.empty();
     }
@@ -68,7 +72,11 @@ public:
     int capaciteDechargement; // Capacité en nombre de produits
 
     QuaiDechargement(int id, int capacite)
-        : id(id), estOccupe(false), capaciteDechargement(capacite) {}
+        : id(id), estOccupe(false), capaciteDechargement(capacite) {
+        if (capacite <= 0) {
+            throw std::invalid_argument("La capacité doit être positive.");
+        }
+    }
 
     void commencerDechargement() {
         estOccupe = true;
@@ -87,7 +95,12 @@ public:
     int capacite;
     bool estActif;
 
-    Convoyeur(int capacite) : capacite(capacite), estActif(true) {}
+    Convoyeur(int capacite) : capacite(capacite), estActif(true) {
+        if (capacite <= 0) {
+            throw std::invalid_argument("La capacité doit être positive.");
+        }
+    }
+
 
     void transporterProduits(int nombreProduits) {
         std::cout << nombreProduits << " produits transportés par le convoyeur.\n";
@@ -107,8 +120,11 @@ public:
     std::vector<Produit> chargement;
 
     VehiculeTransport(int id, int capacite, double vitesse)
-        : id(id), capaciteMax(capacite), vitesseMoyenne(vitesse), estDisponible(true) {}
-
+        : id(id), capaciteMax(capacite), vitesseMoyenne(vitesse), estDisponible(true) {
+        if (capacite <= 0 || vitesse <= 0) {
+            throw std::invalid_argument("La capacité et la vitesse doivent être positives.");
+        }
+    }
     bool chargerProduit(const Produit& produit) {
         if (chargement.size() < capaciteMax) {
             chargement.push_back(produit);
@@ -279,25 +295,37 @@ public:
             [clientId](const Client& c) { return c.id == clientId; });
 
         if (clientIt != clients.end() && !entrepot.estVide()) {
-            // Chercher un transporteur disponible
-            auto transporteurIt = std::find_if(vehicules.begin(), vehicules.end(),
-                [](const VehiculeTransport& v) { return v.estDisponible; });
+            // Chercher des transporteurs disponibles
+            VehiculeTransport* transporteurChoisi = nullptr;
 
-            if (transporteurIt != vehicules.end()) {
+            std::vector<VehiculeTransport*> transporteursDisponibles;
+            for (auto& transporteur : vehicules) {
+                if (transporteur.estDisponible) {
+                    transporteursDisponibles.push_back(&transporteur);
+                }
+            }
+
+            if (!transporteursDisponibles.empty()) {
+                int indexAleatoire = rand() % transporteursDisponibles.size();
+                transporteurChoisi = transporteursDisponibles[indexAleatoire];
+            }
+
+
+            if (transporteurChoisi) {
                 // Marquer le transporteur comme occupé
-                transporteurIt->estDisponible = false;
-                disponibiliteTransporteurs[transporteurIt->id] = false;
+                transporteurChoisi->estDisponible = false;
+                disponibiliteTransporteurs[transporteurChoisi->id] = false;
 
                 int produitsLivres = 0;
                 while (produitsLivres < quantite && !entrepot.estVide() && 
-                    produitsLivres < transporteurIt->capaciteMax) {
-                    Produit produitExpedie = entrepot.retirerProduit();  // FIFO : on retire le premier produit
+                    produitsLivres < transporteurChoisi->capaciteMax) {
+                    Produit produitExpedie = entrepot.retirerProduit();
                     produitsExpedies++;
                     double tempsTotal = tempsSimule - produitExpedie.tempsReception;
                     totalTempsEnStock += tempsTotal;
                     tempsSystemeProduits.push_back(tempsTotal);
 
-                    transporteurIt->chargerProduit(produitExpedie);
+                    transporteurChoisi->chargerProduit(produitExpedie);
                     produitsLivres++;
                 }
 
@@ -306,16 +334,16 @@ public:
                 empreinteCarbone += calculerEmpreinteCarbone(distance);
 
                 // Simuler la livraison
-                transporteurIt->demarrerLivraison(clientIt->nom);
+                transporteurChoisi->demarrerLivraison(clientIt->nom);
                 std::cout << produitsLivres << " produits expédiés au client " 
-                        << clientIt->nom << " par le véhicule " << transporteurIt->id << ".\n";
+                        << clientIt->nom << " par le véhicule " << transporteurChoisi->id << ".\n";
 
                 // Simulation de fin de livraison
-                int tempsLivraison = static_cast<int>(distance / transporteurIt->vitesseMoyenne);
-                transporteurIt->dechargerProduits();
-                transporteurIt->terminerLivraison();
-                transporteurIt->estDisponible = true;
-                disponibiliteTransporteurs[transporteurIt->id] = true;
+                int tempsLivraison = static_cast<int>(distance / transporteurChoisi->vitesseMoyenne);
+                transporteurChoisi->dechargerProduits();
+                transporteurChoisi->terminerLivraison();
+                transporteurChoisi->estDisponible = true;
+                disponibiliteTransporteurs[transporteurChoisi->id] = true;
             } else {
                 std::cout << "Aucun transporteur disponible pour la livraison.\n";
             }
@@ -341,8 +369,12 @@ public:
         for (tempsSimule = 0; tempsSimule < horizonSimulation; ++tempsSimule) {
             // Simuler l'arrivage de produits
             if (tempsSimule % frequenceArrivage == 0) {
-                receptionnerProduits(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
+                int nombreProduits = 1 + rand() % 5;  // Entre 1 et 5 produits
+                for (int i = 0; i < nombreProduits; ++i) {
+                    receptionnerProduits(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
+                }
             }
+
 
             // Traiter les demandes clients
             traiterDemandesClients();
