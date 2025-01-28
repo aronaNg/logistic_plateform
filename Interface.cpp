@@ -159,15 +159,23 @@ public:
 
 int main() {
     srand(time(0));
-    PlateformeLogistique plateforme(100, 100, 10, 15);
+    PlateformeLogistique plateforme(200, 100, 10, 15);
 
     plateforme.enregistrerClient(1, "NGOM", 10.0, 15.0);
     plateforme.enregistrerClient(2, "HOFFMANN", 20.0, 5.0);
     plateforme.enregistrerClient(3, "Testeur", 15.0, 25.0);
+    plateforme.enregistrerClient(4, "Client A", 10.0, 15.0);
+    plateforme.enregistrerClient(5, "Client B", 20.0, 5.0);
+    plateforme.enregistrerClient(6, "Client C", 15.0, 25.0);
+    plateforme.enregistrerClient(7, "Client D", 10.0, 20.0);
     
-    plateforme.ajouterDemande(1, 1, 30);
-    plateforme.ajouterDemande(2, 23, 70);
+    plateforme.ajouterDemande(1, 3, 30);  // Client A veut 5 produits avant t=30
+    plateforme.ajouterDemande(2, 2, 80);  
+    plateforme.ajouterDemande(3, 3, 90);  
+    plateforme.ajouterDemande(4, 2, 100);  
 
+  
+    // Enregistrement des quais, convoyeurs et véhicules de transport
     plateforme.enregistrerQuai(QuaiDechargement(1, 5));
     plateforme.enregistrerConvoyeur(Convoyeur(10));
     plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));

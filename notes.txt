@@ -54,6 +54,7 @@ Fonctionnalités Principales:
 Réception des produits
 Stockage en entrepôt
 Expédition vers les clients
+Stats sur les produits reçus et livrés
 Calcul des distances et de l'empreinte carbone
 Suivi des statistiques (produits reçus/expédiés, temps en stock)
 
@@ -77,9 +78,9 @@ Optimisation des ressources
 Suivi environnemental (empreinte carbone)
 Indicateurs de performance
 
-Amélioration : Il pourrait être intéressant d’introduire un système FIFO (First-In, First-Out) pour mieux simuler la gestion des stocks. Utiliser std::queue ou std::deque au lieu d’un std::vector pourrait être une option.
+Un système FIFO (First-In, First-Out) pour mieux simuler la gestion des stocks et on a Utilisé std::queue.
 
-1. Livraison Prioritaire par Demande (Actuel)
+Livraison Prioritaire par Demande
 
     Principe : Tu expédies une demande uniquement si le stock est suffisant. Sinon, tu passes à la suivante.
     🔹 Avantages :
