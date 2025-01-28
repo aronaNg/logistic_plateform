@@ -79,3 +79,14 @@ Indicateurs de performance
 
 Amélioration : Il pourrait être intéressant d’introduire un système FIFO (First-In, First-Out) pour mieux simuler la gestion des stocks. Utiliser std::queue ou std::deque au lieu d’un std::vector pourrait être une option.
 
+1. Livraison Prioritaire par Demande (Actuel)
+
+    Principe : Tu expédies une demande uniquement si le stock est suffisant. Sinon, tu passes à la suivante.
+    🔹 Avantages :
+    ✅ Garantie que chaque expédition est complète.
+    ✅ Pas d’expédition partielle, donc moins de trajets inutiles.
+    ✅ Gestion simple des demandes et du stock.
+
+🔻 Inconvénients :
+❌ Les petits clients peuvent être ignorés si une grosse demande monopolise les stocks.
+❌ Certains clients attendent longtemps si leur quantité demandée est trop élevée par rapport au stock disponible.

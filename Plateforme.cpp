@@ -307,60 +307,97 @@ public:
         std::cout << "Taux d'occupation des transporteurs : " 
                   << calculerTauxOccupationTransporteurs() << "%\n";
     }
-void traiterDemandesClients() {
-    log("INFO", "Traitement des demandes client en cours...", tempsSimule);
 
-    for (auto& demande : demandesEnCours) {
-        // Trouver un véhicule disponible
-        auto itVehicule = std::find_if(vehicules.begin(), vehicules.end(),
-                                       [](const VehiculeTransport& vehicule) { return vehicule.estDisponible; });
-
-        if (itVehicule != vehicules.end()) {
-            VehiculeTransport& vehicule = *itVehicule;
-
-            // Trouver le client correspondant à la demande
-            auto itClient = std::find_if(clients.begin(), clients.end(),
-                                         [&demande](const Client& client) { return client.id == demande.clientId; });
-
-            if (itClient != clients.end()) {
-                Client& client = *itClient;
-
-                // Charger les produits pour satisfaire la demande
-                int produitsCharges = 0;
-                while (produitsCharges < demande.quantite && !entrepot.estVide() && vehicule.chargement.size() < vehicule.capaciteMax) {
-                    Produit produit = entrepot.retirerProduit();
-                    vehicule.chargerProduit(produit);
-                    produitsCharges++;
-                }
-
-                if (produitsCharges > 0) {
-                    log("INFO", "Véhicule " + std::to_string(vehicule.id) + " chargé avec " + std::to_string(produitsCharges) +
-                                " produits pour le client " + client.nom, tempsSimule);
-
-                    // Calcul de la distance et empreinte carbone
-                    double distance = calculerDistance(0, 0, client.positionX, client.positionY); // Remplacez (0, 0) par la position de l'entrepôt
-                    double empreinte = calculerEmpreinteCarbone(distance);
-                    empreinteCarbone += empreinte;
-
-                    vehicule.demarrerLivraison(client.nom);
-                    vehicule.terminerLivraison();
-
-                    produitsExpedies += produitsCharges;
-                } else {
-                    log("WARNING", "Pas assez de produits pour satisfaire la demande du client " + client.nom, tempsSimule);
-                }
-            } else {
-                log("ERROR", "Client avec ID " + std::to_string(demande.clientId) + " introuvable.", tempsSimule);
-            }
-        } else {
-            log("WARNING", "Aucun véhicule disponible pour traiter les demandes en ce moment.", tempsSimule);
-            break;
+    void declencherExpedition() {
+        if (!entrepot.stock.empty()) {
+            // Choix aléatoire d'un client pour la livraison
+            int indexClient = rand() % clients.size();
+            declencherExpeditionPourClient(clients[indexClient].id, 1);
         }
     }
 
-    entrepot.afficherStock();
-}
 
+        void traiterDemandesClients() {
+            // Trier les demandes par délai souhaité croissant
+            std::sort(demandesEnCours.begin(), demandesEnCours.end(),
+                    [](const DemandeClient& a, const DemandeClient& b) {
+                        return a.delaiSouhaite < b.delaiSouhaite;
+                    });
+            
+            auto it = demandesEnCours.begin();
+            while (it != demandesEnCours.end()) {
+                if (it->delaiSouhaite >= tempsSimule && trouverTransporteurDisponible()) {
+                    if (entrepot.tailleStock() >= it->quantite) {
+                        declencherExpeditionPourClient(it->clientId, it->quantite);
+                        it = demandesEnCours.erase(it);
+                    } else {
+                        log("WARNING", "Stock insuffisant pour satisfaire la demande du client " + std::to_string(it->clientId), tempsSimule);
+                        ++it;
+                    }
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        void declencherExpeditionPourClient(int clientId, int quantite) {
+            auto clientIt = std::find_if(clients.begin(), clients.end(),
+                [clientId](const Client& c) { return c.id == clientId; });
+
+            if (clientIt != clients.end() && !entrepot.estVide()) {
+                // Chercher des transporteurs disponibles
+                VehiculeTransport* transporteurChoisi = nullptr;
+
+                std::vector<VehiculeTransport*> transporteursDisponibles;
+                for (auto& transporteur : vehicules) {
+                    if (transporteur.estDisponible) {
+                        transporteursDisponibles.push_back(&transporteur);
+                    }
+                }
+
+                if (!transporteursDisponibles.empty()) {
+                    int indexAleatoire = rand() % transporteursDisponibles.size();
+                    transporteurChoisi = transporteursDisponibles[indexAleatoire];
+                }
+
+
+                if (transporteurChoisi) {
+                    // Marquer le transporteur comme occupé
+                    transporteurChoisi->estDisponible = false;
+                    disponibiliteTransporteurs[transporteurChoisi->id] = false;
+                    log("DEBUG", "Transporteur " + std::to_string(transporteurChoisi->id) + " sélectionné.", tempsSimule);
+                    int produitsLivres = 0;
+                    while (produitsLivres < quantite && !entrepot.estVide() && 
+                        produitsLivres < transporteurChoisi->capaciteMax) {
+                        Produit produitExpedie = entrepot.retirerProduit();
+                        produitsExpedies++;
+                        double tempsTotal = tempsSimule - produitExpedie.tempsReception;
+                        totalTempsEnStock += tempsTotal;
+                        tempsSystemeProduits.push_back(tempsTotal);
+
+                        transporteurChoisi->chargerProduit(produitExpedie);
+                        produitsLivres++;
+                    }
+
+                    // Calcul de la distance et empreinte carbone
+                    double distance = calculerDistance(0, 0, clientIt->positionX, clientIt->positionY);
+                    empreinteCarbone += calculerEmpreinteCarbone(distance);
+
+                    // Simuler la livraison
+                    transporteurChoisi->demarrerLivraison(clientIt->nom);
+                    log("INFO", std::to_string(produitsLivres) + " produits expédiés au client " + clientIt->nom + ".");
+
+                    // Simulation de fin de livraison
+                    int tempsLivraison = static_cast<int>(distance / transporteurChoisi->vitesseMoyenne);
+                    transporteurChoisi->dechargerProduits();
+                    transporteurChoisi->terminerLivraison();
+                    transporteurChoisi->estDisponible = true;
+                    disponibiliteTransporteurs[transporteurChoisi->id] = true;
+                } else {
+                    std::cout << "Aucun transporteur disponible pour la livraison.\n";
+                }
+            }
+        }
 
 
     void afficherIndicateursFinals() {
@@ -382,7 +419,7 @@ void traiterDemandesClients() {
             // Simuler l'arrivage de produits
 
             if (tempsSimule % frequenceArrivage == 0) {
-                int nombreProduits = 1 + rand() % 5;  // Entre 1 et 5 produits
+                int nombreProduits = 5 + rand() % 15;  
                 std::vector<Produit> produitsArrives;
                 for (int i = 0; i < nombreProduits; ++i) {
                     produitsArrives.push_back(Produit(produitsRecus + 1, "Produit X", 2.5, tempsSimule));
@@ -391,6 +428,11 @@ void traiterDemandesClients() {
             }
             // Traiter les demandes clients
             traiterDemandesClients();
+
+            // Simuler une expédition de produits
+            if (tempsSimule % frequenceExpedition == 0 && !entrepot.stock.empty()) {
+                declencherExpedition();
+            }
 
             // Afficher les indicateurs tous les 10 pas de temps
             if (tempsSimule % 10 == 0) {
@@ -402,27 +444,30 @@ void traiterDemandesClients() {
     }
 };
 
-// int main() {
-//     srand(time(0));  // Initialisation pour les nombres aléatoires
+int main() {
+    srand(time(0));  // Initialisation pour les nombres aléatoires
 
-//     PlateformeLogistique plateforme(100, 100, 10, 15); 
+    PlateformeLogistique plateforme(300, 200, 10, 15); 
 
-//     plateforme.enregistrerClient(1, "Client A", 10.0, 15.0);
-//     plateforme.enregistrerClient(2, "Client B", 20.0, 5.0);
-//     plateforme.enregistrerClient(3, "Client C", 15.0, 25.0);
+    plateforme.enregistrerClient(1, "Client A", 10.0, 15.0);
+    plateforme.enregistrerClient(2, "Client B", 20.0, 5.0);
+    plateforme.enregistrerClient(3, "Client C", 15.0, 25.0);
+    plateforme.enregistrerClient(4, "Client D", 10.0, 20.0);
     
-//     plateforme.ajouterDemande(1, 5, 30);  // Client A veut 5 produits avant t=30
-//     plateforme.ajouterDemande(2, 3, 50);  // Client B veut 3 produits avant t=50
-//     plateforme.ajouterDemande(3, 4, 70);  // Client C veut 4 produits avant t=70
+    plateforme.ajouterDemande(1, 3, 30);  // Client A veut 5 produits avant t=30
+    plateforme.ajouterDemande(2, 4, 80);  
+    plateforme.ajouterDemande(3, 5, 90);  
+    plateforme.ajouterDemande(4, 6, 100);  
 
-//     // Enregistrement des quais, convoyeurs et véhicules de transport
-//     plateforme.enregistrerQuai(QuaiDechargement(1, 5));
-//     plateforme.enregistrerConvoyeur(Convoyeur(10));
-//     plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));
-//     plateforme.enregistrerVehicule(VehiculeTransport(2, 30, 90.0));
+  
+    // Enregistrement des quais, convoyeurs et véhicules de transport
+    plateforme.enregistrerQuai(QuaiDechargement(1, 5));
+    plateforme.enregistrerConvoyeur(Convoyeur(10));
+    plateforme.enregistrerVehicule(VehiculeTransport(1, 50, 80.0));
+    plateforme.enregistrerVehicule(VehiculeTransport(2, 30, 90.0));
 
-//     // Simulation du fonctionnement de la plateforme
-//     plateforme.simulerOperation();
+    // Simulation du fonctionnement de la plateforme
+    plateforme.simulerOperation();
 
-//     return 0;
-// }
+    return 0;
+}

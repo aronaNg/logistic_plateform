@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <limits>
-#include "projet6.cpp"
+#include "Plateforme.cpp"
 class SimulationInterface {
 private:
     PlateformeLogistique& plateforme;
